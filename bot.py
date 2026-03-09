@@ -16,7 +16,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    guild = discord.Object(id=1480516340270891028)  # Replace with your server ID
+    guild = discord.Object(id=1480516340270891028)
     bot.tree.copy_global_to(guild=guild)
     await bot.tree.sync(guild=guild)
     print(f"Logged in as {bot.user}")
@@ -113,24 +113,27 @@ async def trivia(interaction: discord.Interaction):
 
 # /kick command
 @bot.tree.command(name="kick", description="Kick a member")
-@app_commands.checks.has_permissions(kick_members=True)
 async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason"):
     await interaction.response.defer(ephemeral=True)
+
+    allowed_role_id = 1323031720609714309
+    user_role_ids = [role.id for role in interaction.user.roles]
+
+    if allowed_role_id not in user_role_ids:
+        await interaction.followup.send("❌ You don't have permission to use this command!")
+        return
     if member == interaction.user:
         await interaction.followup.send("❌ You can't kick yourself!")
         return
     if member.top_role >= interaction.guild.me.top_role:
         await interaction.followup.send("❌ That person's role is higher than mine, I can't kick them!")
         return
+
     await member.kick(reason=reason)
     e = discord.Embed(title="✅ Member Kicked", color=0xFF0000)
     e.add_field(name="User", value=member.mention)
     e.add_field(name="Reason", value=reason)
     e.add_field(name="Moderator", value=interaction.user.mention)
     await interaction.followup.send(embed=e)
-
-@kick.error
-async def kick_error(interaction: discord.Interaction, error):
-    await interaction.followup.send("❌ You don't have permission to kick members!")
 
 bot.run(os.getenv("TOKEN"))
