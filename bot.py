@@ -1,6 +1,6 @@
-import discord
 import os
 import random
+import discord
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
@@ -13,9 +13,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    guild = discord.Object(id=1480516340270891028)
-    bot.tree.copy_global_to(guild=guild)
-    await bot.tree.sync(guild=guild)
+    await bot.tree.sync()
     print(f"Logged in as {bot.user}")
 
 # /embed command
@@ -82,6 +80,49 @@ async def rps(interaction: discord.Interaction, choice: app_commands.Choice[str]
     e.add_field(name="Your choice", value=emojis[choice.value])
     e.add_field(name="Bot's choice", value=emojis[bot_choice])
     e.add_field(name="Result", value=result, inline=False)
+    await interaction.response.send_message(embed=e)
+
+# /ping command
+@bot.tree.command(name="ping", description="Check the bot's latency")
+async def ping(interaction: discord.Interaction):
+    latency_ms = round(bot.latency * 1000)
+    await interaction.response.send_message(f"🛰️ Pong! **{latency_ms}ms**")
+
+# /coinflip command
+@bot.tree.command(name="coinflip", description="Flip a coin")
+async def coinflip(interaction: discord.Interaction):
+    result = random.choice(["Heads", "Tails"])
+    await interaction.response.send_message(f"🪙 **{result}**")
+
+# /say command
+@bot.tree.command(name="say", description="Make the bot say something")
+async def say(interaction: discord.Interaction, message: str):
+    await interaction.response.send_message(message)
+
+# /serverinfo command
+@bot.tree.command(name="serverinfo", description="Show info about this server")
+async def serverinfo(interaction: discord.Interaction):
+    guild = interaction.guild
+    if guild is None:
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        return
+    e = discord.Embed(title=guild.name, color=0x5865F2)
+    e.add_field(name="Members", value=str(guild.member_count))
+    e.add_field(name="Owner", value=guild.owner.mention if guild.owner else "Unknown")
+    e.add_field(name="Created", value=guild.created_at.strftime("%Y-%m-%d"))
+    if guild.icon:
+        e.set_thumbnail(url=guild.icon.url)
+    await interaction.response.send_message(embed=e)
+
+# /userinfo command
+@bot.tree.command(name="userinfo", description="Show info about a user")
+async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
+    member = member or interaction.user
+    e = discord.Embed(title=str(member), color=0x5865F2)
+    e.add_field(name="ID", value=str(member.id))
+    e.add_field(name="Joined", value=member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown")
+    e.add_field(name="Account created", value=member.created_at.strftime("%Y-%m-%d"))
+    e.set_thumbnail(url=member.display_avatar.url)
     await interaction.response.send_message(embed=e)
 
 bot.run(os.getenv("TOKEN"))
