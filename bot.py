@@ -129,7 +129,7 @@ async def ai(interaction: discord.Interaction, question: str):
     await interaction.response.defer()
     try:
         response = await groq_client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant in a Discord server. Keep responses concise and friendly."},
                 {"role": "user", "content": question}
