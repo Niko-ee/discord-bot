@@ -18,12 +18,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    node = wavelink.Node(
-        uri="ws://lavalink.railway.internal:2333",
+    await bot.tree.sync()
+    await wavelink.NodePool.create_node(
+        bot=bot,
+        host="lavalink.railway.internal",
+        port=2333,
         password="youshallnotpass"
     )
-    await wavelink.Pool.connect(nodes=[node], client=bot)
-    await bot.tree.sync()
     print(f"Logged in as {bot.user}")
 
 # /play command
