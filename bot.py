@@ -22,9 +22,7 @@ async def on_ready():
         password="youshallnotpass"
     )
     await wavelink.Pool.connect(nodes=[node], client=bot)
-    guild = discord.Object(id=1480516340270891028)
-    bot.tree.copy_global_to(guild=guild)
-    await bot.tree.sync(guild=guild)
+    await bot.tree.sync()
     print(f"Logged in as {bot.user}")
 
 # /play command
