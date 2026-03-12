@@ -200,7 +200,7 @@ async def serverinfo(interaction: discord.Interaction):
         return
     e = discord.Embed(title=guild.name, color=0x5865F2)
     e.add_field(name="Members", value=str(guild.member_count))
-    e.add_field(name="Owner", value=guild.owner.mention if guild.owner else "Unknown")
+    e.add_field(name="Owner", value=guild.owner.mention if guild.owner else "Niko and Byt")
     e.add_field(name="Created", value=guild.created_at.strftime("%Y-%m-%d"))
     if guild.icon:
         e.set_thumbnail(url=guild.icon.url)
