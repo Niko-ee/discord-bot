@@ -2,4 +2,3 @@
 aiohttp
 python-dotenv
 groq
-wavelink==2.6.5

@@ -1,7 +1,6 @@
 ﻿import os
 import random
 import discord
-import wavelink
 from groq import AsyncGroq
 from discord.ext import commands
 from discord import app_commands
@@ -13,106 +12,12 @@ groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.voice_states = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
     await bot.tree.sync()
-    await wavelink.NodePool.create_node(
-        bot=bot,
-        host="lavalink.railway.internal",
-        port=2333,
-        password="youshallnotpass"
-    )
     print(f"Logged in as {bot.user}")
-
-# /play command
-@bot.tree.command(name="play", description="Play a song in your voice channel!")
-async def play(interaction: discord.Interaction, search: str):
-    await interaction.response.defer()
-
-    if not interaction.user.voice:
-        await interaction.followup.send("❌ You need to be in a voice channel first!", ephemeral=True)
-        return
-
-    vc: wavelink.Player = interaction.guild.voice_client
-
-    if not vc:
-        vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
-    elif vc.channel != interaction.user.voice.channel:
-        await vc.move_to(interaction.user.voice.channel)
-
-    tracks = await wavelink.Playable.search(search)
-    if not tracks:
-        await interaction.followup.send("❌ No results found!", ephemeral=True)
-        return
-
-    track = tracks[0]
-
-    if vc.playing:
-        await vc.queue.put_wait(track)
-        e = discord.Embed(title="➕ Added to Queue", color=0x5865F2)
-        e.add_field(name="Track", value=track.title)
-        e.add_field(name="Duration", value=f"{track.length // 60000}:{(track.length // 1000) % 60:02d}")
-        await interaction.followup.send(embed=e)
-    else:
-        await vc.play(track)
-        e = discord.Embed(title="🎵 Now Playing", color=0x00FF00)
-        e.add_field(name="Track", value=track.title)
-        e.add_field(name="Duration", value=f"{track.length // 60000}:{(track.length // 1000) % 60:02d}")
-        e.set_footer(text=f"Requested by {interaction.user}")
-        await interaction.followup.send(embed=e)
-
-# /pause command
-@bot.tree.command(name="pause", description="Pause or resume the current song")
-async def pause(interaction: discord.Interaction):
-    vc: wavelink.Player = interaction.guild.voice_client
-    if not vc:
-        await interaction.response.send_message("❌ I'm not in a voice channel!", ephemeral=True)
-        return
-    if vc.paused:
-        await vc.pause(False)
-        await interaction.response.send_message("▶️ Resumed!")
-    else:
-        await vc.pause(True)
-        await interaction.response.send_message("⏸️ Paused!")
-
-# /skip command
-@bot.tree.command(name="skip", description="Skip the current song")
-async def skip(interaction: discord.Interaction):
-    vc: wavelink.Player = interaction.guild.voice_client
-    if not vc:
-        await interaction.response.send_message("❌ I'm not in a voice channel!", ephemeral=True)
-        return
-    await vc.skip()
-    await interaction.response.send_message("⏭️ Skipped!")
-
-# /stop command
-@bot.tree.command(name="stop", description="Stop music and leave the voice channel")
-async def stop(interaction: discord.Interaction):
-    vc: wavelink.Player = interaction.guild.voice_client
-    if not vc:
-        await interaction.response.send_message("❌ I'm not in a voice channel!", ephemeral=True)
-        return
-    await vc.disconnect()
-    await interaction.response.send_message("⏹️ Stopped and left the voice channel!")
-
-# /queue command
-@bot.tree.command(name="queue", description="Show the current queue")
-async def queue(interaction: discord.Interaction):
-    vc: wavelink.Player = interaction.guild.voice_client
-    if not vc or not vc.playing:
-        await interaction.response.send_message("❌ Nothing is playing right now!", ephemeral=True)
-        return
-    e = discord.Embed(title="📋 Queue", color=0x5865F2)
-    e.add_field(name="Now Playing", value=vc.current.title, inline=False)
-    if vc.queue.is_empty:
-        e.add_field(name="Up Next", value="Nothing in queue", inline=False)
-    else:
-        queue_list = "\n".join([f"{i+1}. {t.title}" for i, t in enumerate(vc.queue)])
-        e.add_field(name="Up Next", value=queue_list, inline=False)
-    await interaction.response.send_message(embed=e)
 
 # /embed command
 @bot.tree.command(name="embed", description="Send a fancy embed")
