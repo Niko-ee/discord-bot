@@ -17,12 +17,14 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
     node = wavelink.Node(
         uri="ws://lavalink.railway.internal:2333",
         password="youshallnotpass"
     )
     await wavelink.Pool.connect(nodes=[node], client=bot)
+    guild = discord.Object(id=1480516340270891028)
+    bot.tree.copy_global_to(guild=guild)
+    await bot.tree.sync(guild=guild)
     print(f"Logged in as {bot.user}")
 
 # /play command
