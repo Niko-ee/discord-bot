@@ -18,12 +18,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     await bot.tree.sync()
-    await wavelink.NodePool.create_node(
-        bot=bot,
-        host="lavalink.railway.internal",
-        port=2333,
+    node = wavelink.Node(
+        uri="ws://lavalink.railway.internal:2333",
         password="youshallnotpass"
     )
+    await wavelink.Pool.connect(nodes=[node], client=bot)
     print(f"Logged in as {bot.user}")
 
 # /play command
@@ -42,24 +41,24 @@ async def play(interaction: discord.Interaction, search: str):
     elif vc.channel != interaction.user.voice.channel:
         await vc.move_to(interaction.user.voice.channel)
 
-    tracks = await wavelink.YouTubeTrack.search(search)
+    tracks = await wavelink.Playable.search(search)
     if not tracks:
         await interaction.followup.send("❌ No results found!", ephemeral=True)
         return
 
     track = tracks[0]
 
-    if vc.is_playing():
-        vc.queue.put(track)
+    if vc.playing:
+        await vc.queue.put_wait(track)
         e = discord.Embed(title="➕ Added to Queue", color=0x5865F2)
         e.add_field(name="Track", value=track.title)
-        e.add_field(name="Duration", value=f"{track.duration // 60}:{track.duration % 60:02d}")
+        e.add_field(name="Duration", value=f"{track.length // 60000}:{(track.length // 1000) % 60:02d}")
         await interaction.followup.send(embed=e)
     else:
         await vc.play(track)
         e = discord.Embed(title="🎵 Now Playing", color=0x00FF00)
         e.add_field(name="Track", value=track.title)
-        e.add_field(name="Duration", value=f"{track.duration // 60}:{track.duration % 60:02d}")
+        e.add_field(name="Duration", value=f"{track.length // 60000}:{(track.length // 1000) % 60:02d}")
         e.set_footer(text=f"Requested by {interaction.user}")
         await interaction.followup.send(embed=e)
 
@@ -70,11 +69,11 @@ async def pause(interaction: discord.Interaction):
     if not vc:
         await interaction.response.send_message("❌ I'm not in a voice channel!", ephemeral=True)
         return
-    if vc.is_paused():
-        await vc.resume()
+    if vc.paused:
+        await vc.pause(False)
         await interaction.response.send_message("▶️ Resumed!")
     else:
-        await vc.pause()
+        await vc.pause(True)
         await interaction.response.send_message("⏸️ Paused!")
 
 # /skip command
@@ -84,7 +83,7 @@ async def skip(interaction: discord.Interaction):
     if not vc:
         await interaction.response.send_message("❌ I'm not in a voice channel!", ephemeral=True)
         return
-    await vc.stop()
+    await vc.skip()
     await interaction.response.send_message("⏭️ Skipped!")
 
 # /stop command
@@ -101,11 +100,11 @@ async def stop(interaction: discord.Interaction):
 @bot.tree.command(name="queue", description="Show the current queue")
 async def queue(interaction: discord.Interaction):
     vc: wavelink.Player = interaction.guild.voice_client
-    if not vc or not vc.is_playing():
+    if not vc or not vc.playing:
         await interaction.response.send_message("❌ Nothing is playing right now!", ephemeral=True)
         return
     e = discord.Embed(title="📋 Queue", color=0x5865F2)
-    e.add_field(name="Now Playing", value=vc.track.title, inline=False)
+    e.add_field(name="Now Playing", value=vc.current.title, inline=False)
     if vc.queue.is_empty:
         e.add_field(name="Up Next", value="Nothing in queue", inline=False)
     else:
@@ -200,7 +199,7 @@ async def serverinfo(interaction: discord.Interaction):
         return
     e = discord.Embed(title=guild.name, color=0x5865F2)
     e.add_field(name="Members", value=str(guild.member_count))
-    e.add_field(name="Owner", value=guild.owner.mention if guild.owner else "Niko and Byt")
+    e.add_field(name="Owner", value=guild.owner.mention if guild.owner else "Unknown")
     e.add_field(name="Created", value=guild.created_at.strftime("%Y-%m-%d"))
     if guild.icon:
         e.set_thumbnail(url=guild.icon.url)
